@@ -66,13 +66,13 @@ Tc = robot.get_sampling_period()
 # Input shaper configuration
 
 use_input_shaper = True
-shaper_type = "EI"
+shaper_type = "ZVDD"
 
-natural_frequency = 3.222384
+natural_frequency = 2.92944 
 damping_ratio = 0.0
 residual_vibration = 0.05
 
-input_shaper = InputShaper(
+input_shaper = InputShaper( 
     sampling_time=Tc,
     natural_frequency=natural_frequency,
     damping_ratio=damping_ratio,
@@ -373,131 +373,164 @@ savemat(
 )
 
 
-# Plots
+LINE_WIDTH = 4        
+REF_LINE_WIDTH = 3   
+FONT_SIZE = 18
+TITLE_FONT_SIZE = 22
 
 labels = ["x"]
 
 fig1 = make_subplots(
     rows=3,
-    cols=3,
+    cols=1,
     shared_xaxes=True,
     subplot_titles=(
-        [f"Position {a}" for a in labels]
-        + [f"Velocity {a}" for a in labels]
-        + [f"Actuator force {a} (motor-side)" for a in labels]
-    )
+        [f"Posizione {a}" for a in labels]
+        + [f"Velocità {a}" for a in labels]
+        + [f"Forza attuatore {a} (lato motore)" for a in labels]
+    ),
+    vertical_spacing=0.12
 )
 
 for i, a in enumerate(labels):
     col = i + 1
 
-    fig1.add_trace(
-        go.Scatter(x=t, y=joint_position[:, i], name=f"q_{a}", legendgroup=f"pos_{a}"),
-        row=1, col=col
-    )
-
+  
     fig1.add_trace(
         go.Scatter(
-            x=t,
-            y=reference_position[:, i],
-            name=f"qref_{a}",
+            x=t, y=joint_position[:, i],
+            name="Valore attuale",
             legendgroup=f"pos_{a}",
-            line=dict(dash="dash")
+            line=dict(color="blue", width=LINE_WIDTH)
+        ),
+        row=1, col=col
+    )
+    fig1.add_trace(
+        go.Scatter(
+            x=t, y=reference_position[:, i],
+            name="Riferimento",
+            legendgroup=f"pos_{a}",
+            line=dict(color="red", width=REF_LINE_WIDTH, dash="dash")
         ),
         row=1, col=col
     )
 
-    fig1.add_trace(
-        go.Scatter(x=t, y=joint_velocity[:, i], name=f"dq_{a}", legendgroup=f"vel_{a}"),
-        row=2, col=col
-    )
-
+    
     fig1.add_trace(
         go.Scatter(
-            x=t,
-            y=reference_velocity[:, i],
-            name=f"dqref_{a}",
-            legendgroup=f"vel_{a}",
-            line=dict(dash="dash")
+            x=t, y=joint_velocity[:, i],
+            name="Valore attuale",
+            legendgroup=f"pos_{a}",
+            showlegend=False,
+            line=dict(color="blue", width=LINE_WIDTH)
+        ),
+        row=2, col=col
+    )
+    fig1.add_trace(
+        go.Scatter(
+            x=t, y=reference_velocity[:, i],
+            name="Riferimento",
+            legendgroup=f"pos_{a}",
+            showlegend=False,
+            line=dict(color="red", width=REF_LINE_WIDTH, dash="dash")
         ),
         row=2, col=col
     )
 
+
     fig1.add_trace(
-        go.Scatter(x=t, y=control_action[:, i], name=f"F_{a}", legendgroup=f"u_{a}"),
+        go.Scatter(
+            x=t, y=control_action[:, i],
+            name="Forza attuatore",
+            legendgroup=f"u_{a}",
+            line=dict(color="orange", width=LINE_WIDTH)
+        ),
         row=3, col=col
     )
 
-fig1.update_xaxes(title_text="Time (s)", row=3, col=2)
+fig1.update_xaxes(title_text="Tempo (s)", row=3, col=1, title_font=dict(size=FONT_SIZE))
+fig1.update_xaxes(showgrid=True, tickfont=dict(size=FONT_SIZE - 2))
+fig1.update_yaxes(showgrid=True, tickfont=dict(size=FONT_SIZE - 2))
+
 fig1.update_layout(
-    title="Tracking: position / velocity / control",
-    height=900,
-    width=1200,
+    title=dict(text="Inseguimento: posizione / velocità / forza", font=dict(size=TITLE_FONT_SIZE)),
+    height=1200,
+    width=1600,
+    margin=dict(t=160),
+    font=dict(size=FONT_SIZE),
     legend=dict(
         orientation="h",
         yanchor="bottom",
         y=1.02,
         xanchor="left",
-        x=0
+        x=0,
+        font=dict(size=FONT_SIZE)
     )
 )
 
-fig1.update_xaxes(showgrid=True)
-fig1.update_yaxes(showgrid=True)
+fig1.update_annotations(font_size=TITLE_FONT_SIZE - 2)
 
-
-# Errors
 
 mae_pos = np.mean(np.abs(position_error), axis=0)
 mae_vel = np.mean(np.abs(velocity_error), axis=0)
 
 subplot_titles = (
-    [f"Position error {labels[i]} (MAE={mae_pos[i]:4.3f})" for i in range(dof)]
-    + [f"Velocity error {labels[i]} (MAE={mae_vel[i]:4.3f})" for i in range(dof)]
-    + [f"Actuator force {labels[i]} (motor-side)" for i in range(dof)]
+    [f"Errore di posizione {labels[i]} (MAE={mae_pos[i]:4.3f})" for i in range(dof)]
+    + [f"Errore di velocità {labels[i]} (MAE={mae_vel[i]:4.3f})" for i in range(dof)]
 )
 
 fig2 = make_subplots(
-    rows=3,
-    cols=3,
+    rows=2,
+    cols=1,
     shared_xaxes=True,
-    subplot_titles=subplot_titles
+    subplot_titles=subplot_titles,
+    vertical_spacing=0.18
 )
 
 for i, a in enumerate(labels):
     col = i + 1
 
     fig2.add_trace(
-        go.Scatter(x=t, y=position_error[:, i], name=f"e_q_{a}", legendgroup=f"ep_{a}"),
+        go.Scatter(
+            x=t, y=position_error[:, i],
+            name="Errore di posizione",
+            legendgroup=f"ep_{a}",
+            line=dict(color="blue", width=LINE_WIDTH)
+        ),
         row=1, col=col
     )
 
     fig2.add_trace(
-        go.Scatter(x=t, y=velocity_error[:, i], name=f"e_dq_{a}", legendgroup=f"ev_{a}"),
+        go.Scatter(
+            x=t, y=velocity_error[:, i],
+            name="Errore di velocità",
+            legendgroup=f"ev_{a}",
+            line=dict(color="red", width=LINE_WIDTH)
+        ),
         row=2, col=col
     )
 
-    fig2.add_trace(
-        go.Scatter(x=t, y=control_action[:, i], name=f"F_{a}", legendgroup=f"u_{a}"),
-        row=3, col=col
-    )
+fig2.update_xaxes(title_text="Tempo (s)", row=2, col=1, title_font=dict(size=FONT_SIZE))
+fig2.update_xaxes(showgrid=True, tickfont=dict(size=FONT_SIZE - 2))
+fig2.update_yaxes(showgrid=True, tickfont=dict(size=FONT_SIZE - 2))
 
-fig2.update_xaxes(title_text="Time (s)", row=3, col=2)
 fig2.update_layout(
-    title="Errors: position error / velocity error / control",
-    height=900,
-    width=1200,
+    title=dict(text="Errori: posizione e velocità", font=dict(size=TITLE_FONT_SIZE)),
+    height=1200,
+    width=1600,
+    margin=dict(t=140),
+    font=dict(size=FONT_SIZE),
     legend=dict(
         orientation="h",
         yanchor="bottom",
         y=1.02,
         xanchor="left",
-        x=0
+        x=0,
+        font=dict(size=FONT_SIZE)
     )
 )
 
-fig2.update_xaxes(showgrid=True)
-fig2.update_yaxes(showgrid=True)
+fig2.update_annotations(font_size=TITLE_FONT_SIZE - 2)
 
 fig1.show()
 fig2.show()
